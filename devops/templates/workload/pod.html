@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% block title %}Pods{% endblock %}
+{% block nav-item-2 %}layui-nav-itemed{% endblock %}
+{% block nav-this-2-4 %}layui-this{% endblock %}
+
+{% block content %}
+    <span class="layui-breadcrumb">
+      <a href="#">Home Page</a>
+      <a href="#">Workload</a>
+      <a><cite>Pods</cite></a>
+    </span>
+    <hr>
+<div class="layui-card">
+    <div class="layui-card-body">
+
+        <div class="layui-row">
+            <div class="layui-col-md12">
+              <a href="{% url 'create_resource' %}" class="layui-btn" style="float: left">Create</a>
+              <input type="text" name="name" class="layui-input" style="width: 150px;float: left;margin-left: 20px">
+              <button class="layui-btn" style="float: left" id="searchBtn">Search</button>
+            </div>
+            <div class="layui-col-md12">
+              <table class="layui-hide" id="test" lay-filter="test"></table>
+              <script type="text/html" id="barDemo">
+                <a class="layui-btn layui-btn-xs layui-btn-primary" lay-event="yaml">YAML</a>
+                <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del">Delete</a>
+              </script>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div  id="modal"  style="display: none">
+  <form class="layui-form " action="" >
+    <div id="log-text" class="layui-form-item" style="background-color: black;color: white;padding: 10px;font-size: 16px">
+    </div>
+  </form>
+  </div>
+
+{% endblock %}
+
+{% block js %}
+<script>
+
+// 获取当前命名空间
+var storage = window.sessionStorage;
+var namespace = storage.getItem("namespace");
+
+layui.use('table', function(){
+  var table = layui.table;
+  var $ = layui.jquery;
+
+    table.render({
+      elem: '#test'
+      ,url:"{% url 'pod_api' %}?namespace=" + namespace
+      ,toolbar: '#toolbarDemo' //开启头部工具栏，并为其绑定左侧模板
+      ,defaultToolbar: ['filter', 'exports', 'print', { //自定义头部工具栏右侧图标。如无需自定义，去除该参数即可
+        title: 'Tips'
+        ,layEvent: 'LAYTABLE_TIPS'
+        ,icon: 'layui-icon-tips'
+      }]
+      ,cols: [[
+        {field: 'name', title: 'Name', sort: true}
+        ,{field: 'namespace', title: 'Namespace',sort: true}
+        ,{field: 'pod_ip', title: 'IP address'}
+        ,{field: 'labels', title: 'Labels', templet: labelsFormat}
+        ,{field: 'containers', title: 'Containers', templet: containersFormat}
+        ,{field: 'status', title: 'Status',sort: true, templet: statusFormat}
+        ,{field: 'create_time', title: 'Create time'}
+        ,{fixed: 'right', title:'Operation', toolbar: '#barDemo',width: 250}
+      ]]
+      ,page: true
+      ,id: 'potb'
+    });
+    // 标签格式化，是一个对象
+    function labelsFormat(d){
+        result = "";
+        if(d.labels == null){
+            return "None"
+        } else {
+            for (let key in d.labels) {
+                result += '<span style="border: 1px solid #d6e5ec;border-radius: 8px">' +
+                    key + ':' + d.labels[key] +
+                    '</span><br>'
+            }
+            return result
+        }
+    }
+    function containersFormat(d) {
+        if (d.containers) {
+            for(let key in d.containers) {
+                data = d.containers[key];
+                result += key + ':' + data.c_name  + '=' + data.c_image + '<br>' +
+                          'Number of restarts:' + data.restart_count  + '<br>' +
+                          'State:' + data.c_status + '<br>'
+            }
+            return result
+        } else {
+            return "None"
+        }
+    }
+    // 如果status为None，使用容器状态显示
+    function statusFormat(d){
+        if(d.status == "None"){
+            for(let key in d.containers) {
+                result += d.containers[key].c_status + '<br>'
+            }
+            return result
+        } else {
+            return d.status
+        }
+    }
+
+  //监听行工具事件
+  table.on('tool(test)', function(obj){
+    var data = obj.data;
+    //console.log(obj)
+    if(obj.event === 'del'){
+      layer.confirm('Do you want to delete ' + data["name"] + " this pod?", function(index){
+          csrf_token = $('[name="csrfmiddlewaretoken"]').val();
+        $.ajax({
+            url: "{% url 'pod_api' %}",
+            type: "DELETE",
+            data: data,
+            headers: {"X-CSRFToken": csrf_token},
+            success: function (res) {
+                if (res.code == 0) {
+                    layer.msg(res.msg, {icon: 6});
+                    obj.del()
+                } else {
+                    layer.msg(res.msg, {icon: 5})
+                }
+            },
+            error: function () {
+                layer.msg("Server interface exception",{icon: 5})
+            }
+        })
+
+      });
+    } else if(obj.event === 'yaml'){
+      layer.open({
+            title: 'YAML',
+            type: 2,
+            area: ['50%', '60%'],
+            content: "{% url 'ace_editor' %}?resource=pod&" + 'namespace=' + data['namespace'] + '&name=' + data['name'],
+        })
+    } else if(obj.event === 'log'){
+      var csrf_token = $('[name="csrfmiddlewaretoken"]').val();
+        data['csrfmiddlewaretoken'] = csrf_token;
+        $.ajax({
+           url: '{% url "pod_log" %}',
+           type: 'POST',
+           data: data,
+           async: false,
+           success: function (res) {
+               if(res.code == '0'){
+                    $('#log-text').html("<pre>" + res.data + "</pre>");
+               } else {
+                   $('#log-text').html("<pre>" + res.msg + "</pre>");
+               }
+           },
+           error: function (res) {
+               layer.msg("Server interface error!", {icon:5})
+           }
+       });
+        // 放在ajax下面，ajax改为同步（获取到数据预先填充html内容）,否则不会显示数据
+        layer.open({
+            title: "Container log "+ data["name"],
+            type:1,
+            area : [ '60%', '70%' ],
+            closeBtn: 1, 
+            content: $("#modal").html()   // form div
+        });
+
+    }
+  });
+    // 监听搜索按钮事件
+
+    $("#searchBtn").click(function () {
+        var search_key = $("input[name='name']").val();
+        table.reload('potb', {
+          where: { //设定异步数据接口的额外参数，任意设
+            search_key: search_key
+          }
+          ,page: {
+            curr: 1 //重新从第 1 页开始
+          }
+        }); //只重载数据
+    })
+
+});
+</script>
+
+{% endblock %}

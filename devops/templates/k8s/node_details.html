@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}Nodes{% endblock %}
+{% block nav-item-1 %}layui-nav-itemed{% endblock %}
+{% block nav-this-1-1 %}layui-this{% endblock %}
+{% block content %}
+    <span class="layui-breadcrumb">
+      <a href="#">Home page</a>
+      <a href="#">Kubernetes</a>
+      <a href="#">Nodes</a>
+      <a><cite>Node details</cite></a>
+    </span>
+    <hr>
+
+        <div class="layui-col-md12">
+            <div class="layui-card">
+                <div class="layui-card-header">Container information</div>
+                <div class="layui-card-body">
+                    <table class="layui-hide" id="test" lay-filter="test"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block js %}
+<script>
+layui.use('table', function(){
+  var table = layui.table;
+  var $ = layui.jquery;
+
+      table.render({
+        elem: '#test'
+        ,url:'{% url "node_details_pod_list" %}?node_name=' + '{{ node_name }}'
+        ,toolbar: '#toolbarDemo' //开启头部工具栏，并为其绑定左侧模板
+        ,defaultToolbar: ['filter', 'exports', 'print', { //自定义头部工具栏右侧图标。如无需自定义，去除该参数即可
+          title: '提示'
+          ,layEvent: 'LAYTABLE_TIPS'
+          ,icon: 'layui-icon-tips'
+        }]
+        ,cols: [[
+          {field: 'pod_name', title: 'Pod name', sort: true}
+          ,{field: 'namespace', title: 'Namespace', sort: true}
+          ,{field: 'status', title: 'status', sort: true}
+          ,{field: 'pod_ip', title: 'Pod IP'}
+          ,{field: 'cpu_requests', title: 'CPU requests',sort: true}
+          ,{field: 'cpu_limits', title: 'CPU limits',sort: true}
+          ,{field: 'memory_requests', title: 'Memory requests',sort: true}
+          ,{field: 'memory_limits', title: 'Memory limits',sort: true}
+          ,{field: 'create_time', title: 'Create time'}
+        ]]
+        ,page: true
+      });
+
+    });
+
+</script>
+
+{% endblock %}

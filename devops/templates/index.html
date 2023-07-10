@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}Home page{% endblock %}
+{% block content %}
+<style>
+    .chart {
+        width: 300px;
+        height:400px;
+        float: left;
+        margin-left: 10%
+    }
+</style>
+<div class="layui-col-md12 layui-col-space10">
+    <div class="layui-col-md12 layui-col-space10">
+        <div class="layui-col-md6">
+            <div class="layui-card">
+                <div class="layui-card-header">Computing Resources</div>
+                <div class="layui-card-body">
+                      <div id="chart1" class="chart"></div>
+                      <div id="chart2" class="chart"></div>
+                      <div id="chart3" class="chart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script src="/static/js/echarts.min.js"></script>
+<script src="/static/js/test.js"></script>
+
+<!-- <script src="/static/js/test.js"></script>
+<script src="/static/js/node-chart-index copy 2.js"></script> -->
+<script>
+
+layui.use('table', function(){
+    var table = layui.table;
+    var $ = layui.jquery;
+
+    $.ajax({
+       url: "{% url 'node_resource' %}",
+       type: 'GET',
+       dataType: 'JSON',
+       success: function (res) {
+           var allocatable_cpu = 0; // 允许分配
+           var allocatable_memory = 0;
+           var cpu_requests = 0;   // 已分配
+           var memory_requests = 0;
+           var schedulable_ok = 0;
+           var schedulable_no = 0;
+           var status_ok = 0;
+           var status_no = 0;
+           for(key in res){
+               allocatable_cpu += res[key]["allocatable_cpu"];
+               allocatable_memory += res[key]["allocatable_memory"];
+               cpu_requests += res[key]["cpu_requests"];
+               memory_requests += res[key]["memory_requests"];
+
+               if (res[key]["status"] == "True") {
+                   status_ok  += 1
+               } else {
+                   status_no += 1
+               }
+           }
+           cpu_percent = 100 * cpu_requests / allocatable_cpu;
+           memory_percent = 100 * memory_requests / allocatable_memory ;
+           node_total = (status_ok+status_no);
+           status_percent = 100 * status_ok / node_total;
+           schedulable_percent = 100 * schedulable_ok / node_total;
+           // Node就绪
+           option1.series[0].data[0].name = "Node status: Ready " + status_ok + " / total " + node_total + " .";
+           option1.series[0].data[0].value = status_percent.toFixed(1);
+           myChart1.setOption(option1, true);
+           // CPU
+           option2.series[0].data[0].name = "CPU usage: " + cpu_requests.toFixed(1) + " Core / " + allocatable_cpu.toFixed(1) + " Core";
+           option2.series[0].data[0].value = cpu_percent.toFixed(1);
+           myChart2.setOption(option2, true);
+           // 内存
+           option3.series[0].data[0].name = "Memory usage: " + memory_requests.toFixed(1) + " G / " + allocatable_memory.toFixed(1) + " G";
+           option3.series[0].data[0].value = memory_percent.toFixed(1);
+           myChart3.setOption(option3, true);
+       }
+   });
+});
+
+</script>
+
+
+{% endblock %}

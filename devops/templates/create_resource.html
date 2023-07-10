@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% block content %}
+    <span class="layui-breadcrumb">
+      <a href="#">Home Page</a>
+      <a><cite>Create resource</cite></a>
+    </span>
+    <hr>
+
+    <div class="layui-btn-container">
+      <button type="button" class="layui-btn layui-btn-primary" id="yaml"><i class="layui-icon"></i>Only allow yaml file</button>
+    </div>
+  
+
+
+    <div class="layui-card">
+      <div class="layui-card-body">
+
+      <fieldset class="layui-elem-field layui-field-title" style="margin-top: 20px;">
+        <legend>Create resource</legend>
+      </fieldset>
+
+      <form class="layui-form " onclick="return false">
+
+          <div class="layui-form-item">
+              <label class="layui-form-label">Path:</label>
+              <div class="layui-input-block">
+              <input name="path" type = text  lay-verify="required" id="path">
+              </input>
+              </div>
+           </div>
+
+           <div class="layui-form-item">
+            <label class="layui-form-label">Namespace:</label>
+            <div class="layui-input-block">
+            <select name="namespace"  lay-verify="required" id="namespace">
+            </select>
+            </div>
+         </div>
+
+         <div class="layui-form-item">
+          <label class="layui-form-label">Resource:</label>
+          <div class="layui-input-block">
+          <select name="resource"  lay-verify="required" id="resource">
+            <option value="daemonset">daemonset</option>
+            <option value="statefulset">statefulset</option>
+            <option value="configmap">configmap</option>
+            <option value="pvc">pvc</option>
+            <option value="pv">pv</option>
+            <option value="ingress">ingress</option>
+            <option value="service">service</option>
+            <option value="configmap">configmap</option>
+            <option value="secret">secret</option>
+            <option value="role">role</option>
+            <option value="role_bind">role_bind</option>
+            <option value="role_bind">hpa</option>
+          </select>
+          </div>
+       </div>
+
+       <div class="layui-form-item">
+        <div class="layui-input-block">
+          <button type="submit" class="layui-btn" lay-submit="" lay-filter="btn">Submit</button>
+        </div>
+    </div>
+
+      </form>
+      </div>
+  </div>
+
+
+{% csrf_token %}
+{% endblock %}
+
+{% block js %}
+<script>
+var storage = window.sessionStorage;
+var namespace = storage.getItem("namespace");
+var path = ""
+layui.use(['upload', 'element', 'layer'], function(){
+  var $ = layui.jquery
+  ,upload = layui.upload
+  ,element = layui.element
+  ,layer = layui.layer;
+
+upload.render({ 
+    elem: '#yaml'
+    ,url: "{% url 'upload_file' %}"
+    ,accept: 'file'
+    ,exts: 'ymal'
+    ,done: function(res){
+      layer.msg(res.msg, {time: 0, btn: ['Coyp it']});
+      console.log(res);
+    }
+  });
+});
+
+layui.use(['table','form','layer'], function(){
+  var table = layui.table;
+  var layer = layui.layer;
+  var form = layui.form;
+  var $ = layui.jquery;
+
+  $('#resource').append('<option value=' + "deployment" + '>' + "deployment"+ '</option>');
+  $('#namespace').append('<option value=' + namespace + '>' + namespace + '</option>');
+  form.render();
+
+
+  // 监听提交
+  form.on('submit(btn)', function (data) {
+      data = data.field;
+      csrf_token = $('[name="csrfmiddlewaretoken"]').val();
+      data['csrfmiddlewaretoken'] = csrf_token;
+        $.ajax({
+            url: '{% url "create_resource_api" %}',
+            type: "POST",
+            data: data,
+            success: function (res) {
+                if (res.code == 0) {
+                    layer.msg(res.msg, {icon: 6});
+                } else {
+                    layer.msg(res.msg, {icon: 5})
+                }
+            },
+            error: function () {
+                layer.msg(res.msg,{icon: 5})
+            }
+        })
+  })
+
+});
+</script>
+{% endblock %}
